@@ -1,0 +1,58 @@
+basePath: /
+consumes:
+- application/json
+definitions:
+  Label:
+    properties:
+      Name:
+        type: string
+        x-go-name: Value
+    title: Label is a key/value pair of strings.
+    type: object
+    x-go-package: github.com/prometheus/prometheus/pkg/labels
+  Labels:
+    description: |-
+      Labels is a sorted set of labels. Order has to be guaranteed upon
+      instantiation.
+    items:
+      $ref: '#/definitions/Label'
+    type: array
+    x-go-package: github.com/prometheus/prometheus/pkg/labels
+host: some-url.com
+info:
+  description: Documentation of our go API.
+  title: goAPI.
+  version: 1.0.0
+paths:
+  /products:
+    get:
+      description: Returns a list of products
+      operationId: listProducts
+      responses:
+        "200":
+          $ref: '#/responses/productsResponse'
+      tags:
+      - products
+produces:
+- application/json
+responses:
+  productsResponse:
+    description: Alert has info for an alert.
+    headers:
+      activeAt:
+        format: date-time
+        type: string
+      annotations: {}
+      labels: {}
+      state:
+        type: string
+      value:
+        type: string
+    schema:
+      $ref: '#/definitions/Labels'
+schemes:
+- http
+securityDefinitions:
+  basic:
+    type: basic
+swagger: "2.0"
