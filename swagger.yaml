@@ -2,6 +2,33 @@ basePath: /
 consumes:
 - application/json
 definitions:
+  Alert:
+    properties:
+      activeAt:
+        format: date-time
+        type: string
+        x-go-name: ActiveAt
+      annotations:
+        $ref: '#/definitions/Labels'
+      labels:
+        $ref: '#/definitions/Labels'
+      state:
+        type: string
+        x-go-name: State
+      value:
+        type: string
+        x-go-name: Value
+    title: Alert has info for an alert.
+    type: object
+    x-go-package: Porting_GoAPI_to_OpenAPI
+  AlertmanagerTarget:
+    properties:
+      url:
+        type: string
+        x-go-name: URL
+    title: AlertmanagerTarget has info on one AM.
+    type: object
+    x-go-package: Porting_GoAPI_to_OpenAPI
   Label:
     properties:
       Name:
@@ -18,25 +45,112 @@ definitions:
       $ref: '#/definitions/Label'
     type: array
     x-go-package: github.com/prometheus/prometheus/pkg/labels
+  MetricType:
+    title: MetricType represents metric type values.
+    type: string
+    x-go-package: github.com/prometheus/prometheus/pkg/textparse
+  RuleHealth:
+    title: RuleHealth describes the health state of a rule.
+    type: string
+    x-go-package: github.com/prometheus/prometheus/rules
+  TargetHealth:
+    title: TargetHealth describes the health state of a target.
+    type: string
+    x-go-package: github.com/prometheus/prometheus/scrape
 host: some-url.com
 info:
   description: Documentation of our go API.
   title: goAPI.
   version: 1.0.0
 paths:
-  /products:
+  /v1/alertmanagers:
     get:
-      description: Returns a list of products
-      operationId: listProducts
+      description: Both the active and dropped Alertmanagers are part of the response.
+      operationId: listalertManagers
       responses:
         "200":
-          $ref: '#/responses/productsResponse'
+          $ref: '#/responses/alertManagerDiscoveryStruct'
+      summary: returns an overview of the current state of the Prometheus alertmanager
+        discovery.
       tags:
-      - products
+      - Querying
+  /v1/alerts:
+    get:
+      description: As the /alerts endpoint is fairly new, it does not have the same
+        stability guarantees as the overarching API v1.
+      operationId: listAlerts
+      responses:
+        "200":
+          $ref: '#/responses/alertStruct'
+      summary: returns a list of all active alerts.
+      tags:
+      - Querying
+  /v1/metadata:
+    get:
+      description: "However, it does not provide any target information. This is considered
+        experimental and might change in the future. \nThe data section of the query
+        result consists of an object where each key is a metric name and each value
+        is a list of unique metadata objects, as exposed for that metric name across
+        all targets."
+      operationId: listmetricMetadata
+      responses:
+        "200":
+          $ref: '#/responses/metadataStruct'
+      summary: returns metadata about metrics currently scrapped from targets.
+      tags:
+      - Querying
+  /v1/rules:
+    get:
+      description: |-
+        In addition it returns the currently active alerts fired by the Prometheus instance of each alerting rule.
+        As the /rules endpoint is fairly new, it does not have the same stability guarantees as the overarching API v1.
+      operationId: listrules
+      responses:
+        "200":
+          $ref: '#/responses/ruleStruct'
+      summary: returns a list of alerting and recording rules that are currently loaded.
+      tags:
+      - Querying
+  /v1/targets/metadata:
+    get:
+      description: |-
+        This is experimental and might change in the future.
+        The data section of the query result consists of a list of objects that contain metric metadata and the target label set.
+      operationId: listTargetMetadata
+      responses:
+        "200":
+          $ref: '#/responses/targetMetadataStruct'
+      summary: returns metadata about metrics currently scraped from targets.
+      tags:
+      - Querying
+  /v1/v1/targets:
+    get:
+      description: Both the active and dropped targets are part of the response by
+        default. labels represents the label set after relabelling has occurred. discoveredLabels
+        represent the unmodified labels retrieved during service discovery before
+        relabelling has occurred.
+      operationId: listTargetMetadata
+      responses:
+        "200":
+          $ref: '#/responses/targetStruct'
+      summary: returns an overview of the current state of the Prometheus target discovery.
+      tags:
+      - Querying
 produces:
 - application/json
 responses:
-  productsResponse:
+  alertManagerDiscoveryStruct:
+    description: AlertmanagerDiscovery has all the active Alertmanagers.
+    headers:
+      activeAlertmanagers:
+        items:
+          $ref: '#/definitions/AlertmanagerTarget'
+        type: array
+      droppedAlertmanagers:
+        items:
+          $ref: '#/definitions/AlertmanagerTarget'
+        type: array
+  alertStruct:
     description: Alert has info for an alert.
     headers:
       activeAt:
@@ -50,6 +164,89 @@ responses:
         type: string
     schema:
       $ref: '#/definitions/Labels'
+  metadataStruct:
+    description: ""
+    headers:
+      help:
+        type: string
+      type: {}
+      unit:
+        type: string
+    schema:
+      $ref: '#/definitions/MetricType'
+  ruleStruct:
+    description: ""
+    headers:
+      alerts:
+        items:
+          $ref: '#/definitions/Alert'
+        type: array
+      annotations: {}
+      duration:
+        format: double
+        type: number
+      evaluationTime:
+        format: double
+        type: number
+      health: {}
+      labels: {}
+      lastError:
+        type: string
+      lastEvaluation:
+        format: date-time
+        type: string
+      name:
+        type: string
+      query:
+        type: string
+      state:
+        description: State can be "pending", "firing", "inactive".
+        type: string
+      type:
+        description: Type of an alertingRule is always "alerting".
+        type: string
+    schema:
+      $ref: '#/definitions/RuleHealth'
+  targetMetadataStruct:
+    description: ""
+    headers:
+      help:
+        type: string
+      metric:
+        type: string
+      target: {}
+      type: {}
+      unit:
+        type: string
+    schema:
+      $ref: '#/definitions/MetricType'
+  targetStruct:
+    description: Target has the information for one target.
+    headers:
+      discoveredLabels:
+        description: Labels before any processing.
+      globalUrl:
+        type: string
+      health: {}
+      labels:
+        description: Any labels that are added to this target and its metrics.
+      lastError:
+        type: string
+      lastScrape:
+        format: date-time
+        type: string
+      lastScrapeDuration:
+        format: double
+        type: number
+      scrapePool:
+        type: string
+      scrapeUrl:
+        type: string
+    schema:
+      $ref: '#/definitions/TargetHealth'
+      additionalProperties:
+        type: string
+      type: object
 schemes:
 - http
 securityDefinitions:

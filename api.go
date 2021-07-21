@@ -756,6 +756,7 @@ func (api *API) dropSeries(_ *http.Request) apiFuncResult {
 }
 
 // Target has the information for one target.
+// swagger:response targetStruct
 type Target struct {
 	// Labels before any processing.
 	DiscoveredLabels map[string]string `json:"discoveredLabels"`
@@ -851,6 +852,11 @@ func getGlobalURL(u *url.URL, opts GlobalURLOptions) (*url.URL, error) {
 	return u, nil
 }
 
+// swagger:route GET /v1/v1/targets Querying listTargetMetadata
+// returns an overview of the current state of the Prometheus target discovery.
+// Both the active and dropped targets are part of the response by default. labels represents the label set after relabelling has occurred. discoveredLabels represent the unmodified labels retrieved during service discovery before relabelling has occurred.
+// responses:
+//	200: targetStruct
 func (api *API) targets(r *http.Request) apiFuncResult {
 	sortKeys := func(targets map[string][]*scrape.Target) ([]string, int) {
 		var n int
@@ -938,6 +944,12 @@ func matchLabels(lset labels.Labels, matchers []*labels.Matcher) bool {
 	return true
 }
 
+// swagger:route GET /v1/targets/metadata Querying listTargetMetadata
+// returns metadata about metrics currently scraped from targets.
+// This is experimental and might change in the future.
+// The data section of the query result consists of a list of objects that contain metric metadata and the target label set.
+// responses:
+//	200: targetMetadataStruct
 func (api *API) targetMetadata(r *http.Request) apiFuncResult {
 	limit := -1
 	if s := r.FormValue("limit"); s != "" {
@@ -996,6 +1008,7 @@ func (api *API) targetMetadata(r *http.Request) apiFuncResult {
 	return apiFuncResult{res, nil, nil, nil}
 }
 
+// swagger:response targetMetadataStruct
 type metricMetadata struct {
 	Target labels.Labels        `json:"target"`
 	Metric string               `json:"metric,omitempty"`
@@ -1005,6 +1018,7 @@ type metricMetadata struct {
 }
 
 // AlertmanagerDiscovery has all the active Alertmanagers.
+// swagger:response alertManagerDiscoveryStruct
 type AlertmanagerDiscovery struct {
 	ActiveAlertmanagers  []*AlertmanagerTarget `json:"activeAlertmanagers"`
 	DroppedAlertmanagers []*AlertmanagerTarget `json:"droppedAlertmanagers"`
@@ -1015,6 +1029,11 @@ type AlertmanagerTarget struct {
 	URL string `json:"url"`
 }
 
+// swagger:route GET /v1/alertmanagers Querying listalertManagers
+// returns an overview of the current state of the Prometheus alertmanager discovery.
+// Both the active and dropped Alertmanagers are part of the response.
+// responses:
+//	200: alertManagerDiscoveryStruct
 func (api *API) alertmanagers(r *http.Request) apiFuncResult {
 	urls := api.alertmanagerRetriever(r.Context()).Alertmanagers()
 	droppedURLS := api.alertmanagerRetriever(r.Context()).DroppedAlertmanagers()
@@ -1034,7 +1053,7 @@ type AlertDiscovery struct {
 }
 
 // Alert has info for an alert.
-// swagger:response productsResponse
+// swagger:response alertStruct
 type Alert struct {
 	Labels      labels.Labels `json:"labels"`
 	Annotations labels.Labels `json:"annotations"`
@@ -1043,10 +1062,11 @@ type Alert struct {
 	Value       string        `json:"value"`
 }
 
-// swagger:route GET /products products listProducts
-// Returns a list of products
+// swagger:route GET /v1/alerts Querying listAlerts
+// returns a list of all active alerts.
+// As the /alerts endpoint is fairly new, it does not have the same stability guarantees as the overarching API v1.
 // responses:
-//	200: productsResponse
+//	200: alertStruct
 func (api *API) alerts(r *http.Request) apiFuncResult {
 	alertingRules := api.rulesRetriever(r.Context()).AlertingRules()
 	alerts := []*Alert{}
@@ -1078,12 +1098,19 @@ func rulesAlertsToAPIAlerts(rulesAlerts []*rules.Alert) []*Alert {
 	return apiAlerts
 }
 
+// swagger:response metadataStruct
 type metadata struct {
 	Type textparse.MetricType `json:"type"`
 	Help string               `json:"help"`
 	Unit string               `json:"unit"`
 }
 
+// swagger:route GET /v1/metadata Querying listmetricMetadata
+// returns metadata about metrics currently scrapped from targets.
+// However, it does not provide any target information. This is considered experimental and might change in the future. 
+// The data section of the query result consists of an object where each key is a metric name and each value is a list of unique metadata objects, as exposed for that metric name across all targets.
+// responses:
+//	200: metadataStruct
 func (api *API) metricMetadata(r *http.Request) apiFuncResult {
 	metrics := map[string]map[metadata]struct{}{}
 
@@ -1163,6 +1190,7 @@ type RuleGroup struct {
 
 type rule interface{}
 
+// swagger:response ruleStruct
 type alertingRule struct {
 	// State can be "pending", "firing", "inactive".
 	State          string           `json:"state"`
@@ -1192,6 +1220,13 @@ type recordingRule struct {
 	Type string `json:"type"`
 }
 
+// swagger:route GET /v1/rules Querying listrules
+// returns a list of alerting and recording rules that are currently loaded.
+// In addition it returns the currently active alerts fired by the Prometheus instance of each alerting rule.
+// As the /rules endpoint is fairly new, it does not have the same stability guarantees as the overarching API v1.
+// URL query parameters: - type=alert|record: return only the alerting rules (e.g. type=alert) or the recording rules (e.g. type=record). When the parameter is absent or empty, no filtering is done.
+// responses:
+//	200: ruleStruct
 func (api *API) rules(r *http.Request) apiFuncResult {
 	ruleGroups := api.rulesRetriever(r.Context()).RuleGroups()
 	res := &RuleDiscovery{RuleGroups: make([]*RuleGroup, len(ruleGroups))}
