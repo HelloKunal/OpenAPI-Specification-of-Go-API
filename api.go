@@ -329,6 +329,7 @@ func (api *API) Register(r *route.Router) {
 	r.Put("/admin/tsdb/snapshot", wrap(api.snapshot))
 }
 
+// swagger:response queryDataStruct
 type queryData struct {
 	ResultType parser.ValueType  `json:"resultType"`
 	Result     parser.Value      `json:"result"`
@@ -345,6 +346,17 @@ func (api *API) options(r *http.Request) apiFuncResult {
 	return apiFuncResult{nil, nil, nil, nil}
 }
 
+// swagger:route POST /v1/query Querying listqueryPOST
+// evaluates an instant query at a single point in time.
+// The current server time is used if the time parameter is omitted. You can URL-encode these parameters directly in the request body by using the POST method and Content-Type: application/x-www-form-urlencoded header. This is useful when specifying a large query that may breach server-side URL character limits.
+// responses:
+//	200: queryDataStruct
+
+// swagger:route GET /v1/query Querying listqueryGET
+// evaluates an instant query at a single point in time.
+// The current server time is used if the time parameter is omitted. You can URL-encode these parameters directly in the request body by using the POST method and Content-Type: application/x-www-form-urlencoded header. This is useful when specifying a large query that may breach server-side URL character limits.
+// responses:
+//	200: queryDataStruct
 func (api *API) query(r *http.Request) (result apiFuncResult) {
 	ts, err := parseTimeParam(r, "time", api.now())
 	if err != nil {
@@ -401,6 +413,17 @@ func (api *API) query(r *http.Request) (result apiFuncResult) {
 	}, nil, res.Warnings, qry.Close}
 }
 
+// swagger:route POST /v1/query_range Querying listqueryRangePOST
+// evaluates an expression query over a range of time.
+// You can URL-encode these parameters directly in the request body by using the POST method and Content-Type: application/x-www-form-urlencoded header. This is useful when specifying a large query that may breach server-side URL character limits.
+// responses:
+//	200: queryDataStruct
+
+// swagger:route GET /v1/query_range Querying listqueryRangeGET
+// evaluates an expression query over a range of time.
+// You can URL-encode these parameters directly in the request body by using the POST method and Content-Type: application/x-www-form-urlencoded header. This is useful when specifying a large query that may breach server-side URL character limits.
+// responses:
+//	200: queryDataStruct
 func (api *API) queryRange(r *http.Request) (result apiFuncResult) {
 	start, err := parseTime(r.FormValue("start"))
 	if err != nil {
@@ -480,6 +503,17 @@ func (api *API) queryRange(r *http.Request) (result apiFuncResult) {
 	}, nil, res.Warnings, qry.Close}
 }
 
+// swagger:route POST /v1/query_exemplars Querying listqueryExemplarsPOST
+// returns a list of exemplars for a valid PromQL query for a specific time range.
+// You can URL-encode these parameters directly in the request body by using the POST method and Content-Type: application/x-www-form-urlencoded header. This is useful when specifying a large query that may breach server-side URL character limits.
+// responses:
+//	200:
+
+// swagger:route GET /v1/query_exemplars Querying listqueryExemplarsGET
+// returns a list of exemplars for a valid PromQL query for a specific time range.
+// You can URL-encode these parameters directly in the request body by using the POST method and Content-Type: application/x-www-form-urlencoded header. This is useful when specifying a large query that may breach server-side URL character limits.
+// responses:
+//	200:
 func (api *API) queryExemplars(r *http.Request) apiFuncResult {
 	start, err := parseTimeParam(r, "start", minTime)
 	if err != nil {
@@ -535,6 +569,17 @@ func returnAPIError(err error) *apiError {
 	return &apiError{errorExec, err}
 }
 
+// swagger:route POST /v1/labels Querying_metadata listlabelNamesPOST
+// returns a list of label names.
+// The data section of the JSON response is a list of string label names.
+// responses:
+//	200:
+
+// swagger:route GET /v1/labels Querying_metadata listlabelNamesGET
+// returns a list of label names.
+// The data section of the JSON response is a list of string label names.
+// responses:
+//	200:
 func (api *API) labelNames(r *http.Request) apiFuncResult {
 	start, err := parseTimeParam(r, "start", minTime)
 	if err != nil {
@@ -602,6 +647,11 @@ func (api *API) labelNames(r *http.Request) apiFuncResult {
 	return apiFuncResult{names, nil, warnings, nil}
 }
 
+// swagger:route GET /v1/label/{label_name}/values Querying_metadata listlabelValues
+// returns a list of label values for a provided label name.
+// The data section of the JSON response is a list of string label values..
+// responses:
+//	200:
 func (api *API) labelValues(r *http.Request) (result apiFuncResult) {
 	ctx := r.Context()
 	name := route.Param(ctx, "name")
@@ -686,6 +736,23 @@ var (
 	maxTimeFormatted = maxTime.Format(time.RFC3339Nano)
 )
 
+// swagger:route DELETE /v1/series Querying_metadata listseriesDELETE
+// returns the list of time series that match a certain label set.
+// You can URL-encode these parameters directly in the request body by using the POST method and Content-Type: application/x-www-form-urlencoded header. This is useful when specifying a large or dynamic number of series selectors that may breach server-side URL character limits. The data section of the query result consists of a list of objects that contain the label name/value pairs which identify each series.
+// responses:
+//	200:
+
+// swagger:route POST /v1/series Querying_metadata listseriesPOST
+// returns the list of time series that match a certain label set.
+// You can URL-encode these parameters directly in the request body by using the POST method and Content-Type: application/x-www-form-urlencoded header. This is useful when specifying a large or dynamic number of series selectors that may breach server-side URL character limits. The data section of the query result consists of a list of objects that contain the label name/value pairs which identify each series.
+// responses:
+//	200:
+
+// swagger:route GET /v1/series Querying_metadata listseriesGET
+// returns the list of time series that match a certain label set.
+// You can URL-encode these parameters directly in the request body by using the POST method and Content-Type: application/x-www-form-urlencoded header. This is useful when specifying a large or dynamic number of series selectors that may breach server-side URL character limits. The data section of the query result consists of a list of objects that contain the label name/value pairs which identify each series.
+// responses:
+//	200:
 func (api *API) series(r *http.Request) (result apiFuncResult) {
 	if err := r.ParseForm(); err != nil {
 		return apiFuncResult{nil, &apiError{errorBadData, errors.Wrapf(err, "error parsing form values")}, nil, nil}
@@ -852,7 +919,7 @@ func getGlobalURL(u *url.URL, opts GlobalURLOptions) (*url.URL, error) {
 	return u, nil
 }
 
-// swagger:route GET /v1/v1/targets Querying listTargetMetadata
+// swagger:route GET /v1/targets Default listTargetMetadata
 // returns an overview of the current state of the Prometheus target discovery.
 // Both the active and dropped targets are part of the response by default. labels represents the label set after relabelling has occurred. discoveredLabels represent the unmodified labels retrieved during service discovery before relabelling has occurred.
 // responses:
@@ -944,7 +1011,7 @@ func matchLabels(lset labels.Labels, matchers []*labels.Matcher) bool {
 	return true
 }
 
-// swagger:route GET /v1/targets/metadata Querying listTargetMetadata
+// swagger:route GET /v1/targets/metadata Default listTargetMetadata
 // returns metadata about metrics currently scraped from targets.
 // This is experimental and might change in the future.
 // The data section of the query result consists of a list of objects that contain metric metadata and the target label set.
@@ -1029,7 +1096,7 @@ type AlertmanagerTarget struct {
 	URL string `json:"url"`
 }
 
-// swagger:route GET /v1/alertmanagers Querying listalertManagers
+// swagger:route GET /v1/alertmanagers Default listalertManagers
 // returns an overview of the current state of the Prometheus alertmanager discovery.
 // Both the active and dropped Alertmanagers are part of the response.
 // responses:
@@ -1062,7 +1129,7 @@ type Alert struct {
 	Value       string        `json:"value"`
 }
 
-// swagger:route GET /v1/alerts Querying listAlerts
+// swagger:route GET /v1/alerts Default listAlerts
 // returns a list of all active alerts.
 // As the /alerts endpoint is fairly new, it does not have the same stability guarantees as the overarching API v1.
 // responses:
@@ -1105,7 +1172,7 @@ type metadata struct {
 	Unit string               `json:"unit"`
 }
 
-// swagger:route GET /v1/metadata Querying listmetricMetadata
+// swagger:route GET /v1/metadata Default listmetricMetadata
 // returns metadata about metrics currently scrapped from targets.
 // However, it does not provide any target information. This is considered experimental and might change in the future. 
 // The data section of the query result consists of an object where each key is a metric name and each value is a list of unique metadata objects, as exposed for that metric name across all targets.
@@ -1220,7 +1287,7 @@ type recordingRule struct {
 	Type string `json:"type"`
 }
 
-// swagger:route GET /v1/rules Querying listrules
+// swagger:route GET /v1/rules Default listrules
 // returns a list of alerting and recording rules that are currently loaded.
 // In addition it returns the currently active alerts fired by the Prometheus instance of each alerting rule.
 // As the /rules endpoint is fairly new, it does not have the same stability guarantees as the overarching API v1.
@@ -1305,6 +1372,11 @@ type prometheusConfig struct {
 	YAML string `json:"yaml"`
 }
 
+// swagger:route GET /v1/status/runtimeinfo Status listserveRuntimeInfo
+// returns various runtime information properties about the Prometheus server.
+// The returned values are of different types, depending on the nature of the runtime property
+// responses:
+//	200:
 func (api *API) serveRuntimeInfo(_ *http.Request) apiFuncResult {
 	status, err := api.runtimeInfo()
 	if err != nil {
@@ -1313,10 +1385,20 @@ func (api *API) serveRuntimeInfo(_ *http.Request) apiFuncResult {
 	return apiFuncResult{status, nil, nil, nil}
 }
 
+// swagger:route GET /v1/status/buildinfo Status listserveBuildInfo
+// returns various build information properties about the Prometheus server.
+// All values are of the result type string.
+// responses:
+//	200:
 func (api *API) serveBuildInfo(_ *http.Request) apiFuncResult {
 	return apiFuncResult{api.buildInfo, nil, nil, nil}
 }
 
+// swagger:route GET /v1/status/config Status listserveConfig
+// returns currently loaded configuration file.
+// The config is returned as dumped YAML file. Due to limitation of the YAML library, YAML comments are not included.
+// responses:
+//	200:
 func (api *API) serveConfig(_ *http.Request) apiFuncResult {
 	cfg := &prometheusConfig{
 		YAML: api.config().String(),
@@ -1324,6 +1406,11 @@ func (api *API) serveConfig(_ *http.Request) apiFuncResult {
 	return apiFuncResult{cfg, nil, nil, nil}
 }
 
+// swagger:route GET /v1/status/flags Status listserveFlags
+// returns flag values that Prometheus was configured with.
+// All values are of the result type string.
+// responses:
+//	200:
 func (api *API) serveFlags(_ *http.Request) apiFuncResult {
 	return apiFuncResult{api.flagsMap, nil, nil, nil}
 }
@@ -1344,11 +1431,17 @@ type HeadStats struct {
 }
 
 // tsdbStatus has information of cardinality statistics from postings.
+// swagger:response tsdbStatusStruct
 type tsdbStatus struct {
+	// This provides the following data about the head block of the TSDB.
 	HeadStats                   HeadStats `json:"headStats"`
+	// This will provide a list of metrics names and their series count.
 	SeriesCountByMetricName     []stat    `json:"seriesCountByMetricName"`
+	// This will provide a list of the label names and their value count.
 	LabelValueCountByLabelName  []stat    `json:"labelValueCountByLabelName"`
+	// This will provide a list of the label names and memory used in bytes. Memory usage is calculated by adding the length of all values for a given label name.
 	MemoryInBytesByLabelName    []stat    `json:"memoryInBytesByLabelName"`
+	// This will provide a list of label value pairs and their series count.
 	SeriesCountByLabelValuePair []stat    `json:"seriesCountByLabelValuePair"`
 }
 
@@ -1361,6 +1454,10 @@ func convertStats(stats []index.Stat) []stat {
 	return result
 }
 
+// swagger:route GET /v1/status/tsdb Status listserveTSDBStatus
+// returns various cardinality statistics about the Prometheus TSDB.
+// responses:
+//	200: tsdbStatusStruct
 func (api *API) serveTSDBStatus(*http.Request) apiFuncResult {
 	s, err := api.db.Stats("__name__")
 	if err != nil {
@@ -1395,12 +1492,18 @@ func (api *API) serveTSDBStatus(*http.Request) apiFuncResult {
 	}, nil, nil, nil}
 }
 
+// swagger:response walReplayStatusStruct
 type walReplayStatus struct {
 	Min     int `json:"min"`
 	Max     int `json:"max"`
 	Current int `json:"current"`
 }
 
+// swagger:route GET /v1/status/walreplay Status listserveWALReplayStatus
+// returns information about the WAL replay.
+// read: The number of segments replayed so far. total: The total number segments needed to be replayed. progress: The progress of the replay (0 - 100%). state: The state of the replay. Possible states: - waiting: Waiting for the replay to start. - in progress: The replay is in progress. - done: The replay has finished.
+// responses:
+//	200: walReplayStatusStruct
 func (api *API) serveWALReplayStatus(w http.ResponseWriter, r *http.Request) {
 	httputil.SetCORS(w, api.CORSOrigin, r)
 	status, err := api.db.WALReplayStatus()
@@ -1431,6 +1534,17 @@ func (api *API) remoteWrite(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// swagger:route POST /v1/admin/tsdb/delete_series Admin listdeleteSeriesPOST
+// deletes data for a selection of series in a time range.
+// The actual data still exists on disk and is cleaned up in future compactions or can be explicitly cleaned up by hitting the Clean Tombstones endpoint. New in v2.1 and supports PUT from v2.9
+// responses:
+//	204:
+
+// swagger:route PUT /v1/admin/tsdb/delete_series Admin listdeleteSeriesPUT
+// deletes data for a selection of series in a time range.
+// The actual data still exists on disk and is cleaned up in future compactions or can be explicitly cleaned up by hitting the Clean Tombstones endpoint. New in v2.1 and supports PUT from v2.9
+// responses:
+//	204:
 func (api *API) deleteSeries(r *http.Request) apiFuncResult {
 	if !api.enableAdmin {
 		return apiFuncResult{nil, &apiError{errorUnavailable, errors.New("admin APIs disabled")}, nil, nil}
@@ -1464,6 +1578,17 @@ func (api *API) deleteSeries(r *http.Request) apiFuncResult {
 	return apiFuncResult{nil, nil, nil, nil}
 }
 
+// swagger:route PUT /v1/admin/tsdb/snapshot Admin listsnapshotPUT
+// creates a snapshot of all current data into snapshots/<datetime>-<rand> under the TSDB's data directory and returns the directory as response.
+// It will optionally skip snapshotting data that is only present in the head block, and which has not yet been compacted to disk. New in v2.1 and supports PUT from v2.9
+// responses:
+//	200:
+
+// swagger:route POST /v1/admin/tsdb/snapshot Admin listsnapshotPOST
+// creates a snapshot of all current data into snapshots/<datetime>-<rand> under the TSDB's data directory and returns the directory as response.
+// It will optionally skip snapshotting data that is only present in the head block, and which has not yet been compacted to disk. New in v2.1 and supports PUT from v2.9
+// responses:
+//	200:
 func (api *API) snapshot(r *http.Request) apiFuncResult {
 	if !api.enableAdmin {
 		return apiFuncResult{nil, &apiError{errorUnavailable, errors.New("admin APIs disabled")}, nil, nil}
@@ -1498,6 +1623,17 @@ func (api *API) snapshot(r *http.Request) apiFuncResult {
 	}{name}, nil, nil, nil}
 }
 
+// swagger:route POST /v1/admin/tsdb/clean_tombstones Admin listcleanTombstonesPOST
+// removes the deleted data from disk and cleans up the existing tombstones.
+// This can be used after deleting series to free up space. New in v2.1 and supports PUT from v2.9
+// responses:
+//	204:
+
+// swagger:route PUT /v1/admin/tsdb/clean_tombstones Admin listcleanTombstonesPUT
+// removes the deleted data from disk and cleans up the existing tombstones.
+// This can be used after deleting series to free up space. New in v2.1 and supports PUT from v2.9
+// responses:
+//	204:
 func (api *API) cleanTombstones(r *http.Request) apiFuncResult {
 	if !api.enableAdmin {
 		return apiFuncResult{nil, &apiError{errorUnavailable, errors.New("admin APIs disabled")}, nil, nil}
